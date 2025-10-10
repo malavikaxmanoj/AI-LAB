@@ -1,0 +1,71 @@
+from collections import deque
+
+# Define the goal state
+GOAL_STATE = ((1, 2, 3),
+              (8, 0, 4),
+              (7, 6, 5))
+
+# Possible movements: up, down, left, right
+MOVES = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+def get_neighbors(state):
+    neighbors = []
+    # Find the blank tile (0)
+    for i in range(3):
+        for j in range(3):
+            if state[i][j] == 0:
+                x, y = i, j
+                break
+
+    for dx, dy in MOVES:
+        nx, ny = x + dx, y + dy
+        if 0 <= nx < 3 and 0 <= ny < 3:
+            new_state = [list(row) for row in state]
+            new_state[x][y], new_state[nx][ny] = new_state[nx][ny], new_state[x][y]
+            neighbors.append(tuple(tuple(row) for row in new_state))
+    return neighbors
+
+def dls(state, depth, visited, path):
+    if state == GOAL_STATE:
+        path.append(state)
+        return True
+    if depth == 0:
+        return False
+
+    visited.add(state)
+    for neighbor in get_neighbors(state):
+        if neighbor not in visited:
+            if dls(neighbor, depth - 1, visited, path):
+                path.append(state)
+                return True
+    return False
+
+def iddfs(start_state, max_depth=50):
+    for depth in range(max_depth):
+        visited = set()
+        path = []
+        if dls(start_state, depth, visited, path):
+            path.reverse()
+            return path
+    return None
+
+def print_path(path):
+    for step, state in enumerate(path):
+        print(f"Step {step}:")
+        for row in state:
+            print(row)
+        print()
+
+# Example usage
+if __name__ == "__main__":
+    start_state = ((2, 8, 3),
+                   (1, 6, 4),
+                   (7, 0, 5))
+
+    solution = iddfs(start_state)
+
+    if solution:
+        print(f"Solution found in {len(solution) - 1} moves:")
+        print_path(solution)
+    else:
+        print("No solution found.")
