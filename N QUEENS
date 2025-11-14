@@ -74,3 +74,30 @@ def solve_n_queens(n):
 
 # Example usage:
 solve_n_queens(8)
+---------------------------------------------------------------------------------------------------------------------------------------------------
+output:
+Initial state (random): [2, 6, 1, 2, 1, 7, 1, 5]
+Initial heuristic: 9
+. . . . . . . .
+. . Q . Q . Q .
+Q . . Q . . . .
+. . . . . . . .
+. . . . . . . .
+. . . . . . . Q
+. Q . . . . . .
+. . . . . Q . .
+
+Final state after hill climbing:
+[2, 4, 7, 3, 0, 6, 1, 5]
+Final heuristic: 0
+Steps taken: 5
+. . . . Q . . .
+. . . . . . Q .
+Q . . . . . . .
+. . . Q . . . .
+. Q . . . . . .
+. . . . . . . Q
+. . . . . Q . .
+. . Q . . . . .
+
+✅ Solution found!
