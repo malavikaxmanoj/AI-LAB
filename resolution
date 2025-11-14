@@ -1,67 +1,140 @@
-def negate_literal(literal):
-    if literal.startswith('~'):
-        return literal[1:]
-    else:
-        return '~' + literal
+import copy
 
+# ---------- UNIFICATION ----------
+def unify(x, y, theta={}):
+    if theta is None:
+        return None
+    elif x == y:
+        return theta
+    elif is_variable(x):
+        return unify_var(x, y, theta)
+    elif is_variable(y):
+        return unify_var(y, x, theta)
+    elif is_predicate(x) and is_predicate(y):
+        if x[0] != y[0] or len(x[1]) != len(y[1]):
+            return None
+        return unify(x[1], y[1], theta)
+    elif isinstance(x, list) and isinstance(y, list):
+        if len(x) != len(y):
+            return None
+        if not x: return theta
+        first = unify(x[0], y[0], theta)
+        return unify(x[1:], y[1:], first)
+    else:
+        return None
+
+def unify_var(var, x, theta):
+    if var in theta:
+        return unify(theta[var], x, theta)
+    elif x in theta:
+        return unify(var, theta[x], theta)
+    else:
+        theta2 = theta.copy()
+        theta2[var] = x
+        return theta2
+
+def is_variable(x):
+    return isinstance(x, str) and x[0].islower()
+
+def is_predicate(x):
+    return isinstance(x, tuple) and isinstance(x[1], list)
+
+# ---------- APPLY SUBSTITUTION ----------
+def substitute(clause, theta):
+    new_clause = []
+    for sign, pred in clause:
+        new_args = []
+        for a in pred[1]:
+            if isinstance(a, str) and a in theta:
+                new_args.append(theta[a])
+            else:
+                new_args.append(a)
+        new_clause.append((sign, (pred[0], new_args)))
+    return new_clause
+
+# ---------- RESOLUTION ----------
 def resolve(ci, cj):
     resolvents = []
-    for di in ci:
-        for dj in cj:
-            if di == negate_literal(dj):
-                # Remove complementary literals and merge the rest
-                new_clause = (ci - {di}) | (cj - {dj})
-                resolvents.append(new_clause)
+    for (si, pi) in ci:
+        for (sj, pj) in cj:
+            if si != sj:   # opposite polarity
+                theta = unify(pi, pj, {})
+                if theta is not None:
+                    # apply substitution
+                    new_ci = substitute([x for x in ci if x != (si, pi)], theta)
+                    new_cj = substitute([x for x in cj if x != (sj, pj)], theta)
+                    new_clause = new_ci + new_cj
+
+                    # remove duplicates
+                    cleaned = []
+                    for lit in new_clause:
+                        if lit not in cleaned:
+                            cleaned.append(lit)
+
+                    resolvents.append(cleaned)
+
     return resolvents
 
-def resolution(kb, query):
-    # Add negated query to KB as clauses
-    negated_query = {negate_literal(query)}
-    kb = kb.copy()
-    kb.append(negated_query)
+# ---------- RESOLUTION LOOP ----------
+def fol_resolution(kb, query):
+    # Add negated query
+    neg_query = [("~", query)]
+    clauses = kb + [neg_query]
 
-    print(f"Initial KB clauses:")
-    for clause in kb:
-        print(clause)
+    print("Initial clauses:")
+    for c in clauses:
+        print(c)
     print()
 
     new = []
     while True:
-        n = len(kb)
-        pairs = [(kb[i], kb[j]) for i in range(n) for j in range(i+1, n)]
+        n = len(clauses)
+        pairs = [(clauses[i], clauses[j]) for i in range(n) for j in range(i+1, n)]
 
         for (ci, cj) in pairs:
             resolvents = resolve(ci, cj)
-            for res in resolvents:
-                print(f"Resolving {ci} and {cj} => {res}")
-                if len(res) == 0:
-                    print("\nEmpty clause found! Query proved.\n")
-                    return True
-                if res not in kb and res not in new:
-                    new.append(res)
 
-        if new == []:
-            print("\nNo new clauses, query cannot be proved.\n")
+            for r in resolvents:
+                print(f"Resolve {ci}  AND  {cj}  ->  {r}")
+                if r == []:
+                    print("\n✔ Empty clause produced — Query is TRUE.")
+                    return True
+                if r not in new:
+                    new.append(r)
+
+        if not new:
+            print("\n❌ No new clauses — Query is FALSE.")
             return False
 
         for c in new:
-            kb.append(c)
+            clauses.append(c)
         new = []
 
+# ---------- EXAMPLE ----------
 if __name__ == "__main__":
-    # Knowledge base (in CNF) as sets of literals (for simplicity propositional literals here)
+    # KB:
+    # 1. Human(x) → Mortal(x)
+    # 2. Human(Socrates)
+
     KB = [
-        {'P', 'Q'},     # (P ∨ Q)
-        {'~P'},         # (~P)
-        {'R', '~Q'}     # (R ∨ ~Q)
+        [("~", ("Human", ["x"])), ("+", ("Mortal", ["x"]))],  # ¬Human(x) ∨ Mortal(x)
+        [("+", ("Human", ["Socrates"]))]                      # Human(Socrates)
     ]
 
-    query = 'R'  # Query to prove
+    query = ("Mortal", ["Socrates"])
 
-    print(f"Proving query: {query}\n")
-    result = resolution(KB, query)
+    result = fol_resolution(KB, query)
+    print("\nOUTPUT:", result)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OUTPUT:
+Initial clauses:
+[('~', ('Human', ['x'])), ('+', ('Mortal', ['x']))]
+[('+', ('Human', ['Socrates']))]
+[('~', ('Mortal', ['Socrates']))]
 
-    if result:
-        print("Query is TRUE based on KB.")
-    else:
-        print("Query cannot be proved from KB.")
+Resolve [('~', ('Human', ['x'])), ('+', ('Mortal', ['x']))]  AND  [('+', ('Human', ['Socrates']))]  ->  [('+', ('Mortal', ['Socrates']))]
+Resolve [('~', ('Mortal', ['Socrates']))]  AND  [('+', ('Mortal', ['Socrates']))]  ->  []
+
+✔ Empty clause produced — Query is TRUE.
+
+OUTPUT: True
