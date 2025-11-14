@@ -42,3 +42,10 @@ def run_vacuum():
 
 if __name__ == "__main__":
     run_vacuum()
+---------------------------------------------------------------------------------------------------------------------------------------------------------------
+Initial room states: {'A': 'clean', 'B': 'dirty'}, starting at room A
+
+Moving from A to B
+Cleaning room B
+
+All rooms clean! Performance: 2
