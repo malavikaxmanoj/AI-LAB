@@ -1,0 +1,67 @@
+def negate_literal(literal):
+    if literal.startswith('~'):
+        return literal[1:]
+    else:
+        return '~' + literal
+
+def resolve(ci, cj):
+    resolvents = []
+    for di in ci:
+        for dj in cj:
+            if di == negate_literal(dj):
+                # Remove complementary literals and merge the rest
+                new_clause = (ci - {di}) | (cj - {dj})
+                resolvents.append(new_clause)
+    return resolvents
+
+def resolution(kb, query):
+    # Add negated query to KB as clauses
+    negated_query = {negate_literal(query)}
+    kb = kb.copy()
+    kb.append(negated_query)
+
+    print(f"Initial KB clauses:")
+    for clause in kb:
+        print(clause)
+    print()
+
+    new = []
+    while True:
+        n = len(kb)
+        pairs = [(kb[i], kb[j]) for i in range(n) for j in range(i+1, n)]
+
+        for (ci, cj) in pairs:
+            resolvents = resolve(ci, cj)
+            for res in resolvents:
+                print(f"Resolving {ci} and {cj} => {res}")
+                if len(res) == 0:
+                    print("\nEmpty clause found! Query proved.\n")
+                    return True
+                if res not in kb and res not in new:
+                    new.append(res)
+
+        if new == []:
+            print("\nNo new clauses, query cannot be proved.\n")
+            return False
+
+        for c in new:
+            kb.append(c)
+        new = []
+
+if __name__ == "__main__":
+    # Knowledge base (in CNF) as sets of literals (for simplicity propositional literals here)
+    KB = [
+        {'P', 'Q'},     # (P ∨ Q)
+        {'~P'},         # (~P)
+        {'R', '~Q'}     # (R ∨ ~Q)
+    ]
+
+    query = 'R'  # Query to prove
+
+    print(f"Proving query: {query}\n")
+    result = resolution(KB, query)
+
+    if result:
+        print("Query is TRUE based on KB.")
+    else:
+        print("Query cannot be proved from KB.")

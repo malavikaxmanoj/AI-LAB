@@ -1,0 +1,72 @@
+from itertools import product
+
+def tt_entails(kb, alpha):
+    # Get all unique symbols in KB and alpha
+    symbols = list(set(kb_symbols(kb) | kb_symbols(alpha)))
+    return tt_check_all(kb, alpha, symbols, {})
+
+def tt_check_all(kb, alpha, symbols, model):
+    if not symbols:
+        if pl_true(kb, model):
+            return pl_true(alpha, model)
+        else:
+            return True
+    else:
+        P = symbols[0]
+        rest = symbols[1:]
+        model_true = model.copy()
+        model_true[P] = True
+        model_false = model.copy()
+        model_false[P] = False
+        return (tt_check_all(kb, alpha, rest, model_true) and
+                tt_check_all(kb, alpha, rest, model_false))
+
+def pl_true(expr, model):
+    # Evaluate the expression given the model of symbol truth values
+    # expr can be:
+    # - symbol string (e.g. 'P')
+    # - tuple ('AND', expr1, expr2)
+    # - tuple ('OR', expr1, expr2)
+    # - tuple ('NOT', expr)
+    # - tuple ('IMPLIES', expr1, expr2)
+    
+    if isinstance(expr, str):
+        # Base case: symbol
+        return model.get(expr, False)
+    op = expr[0]
+    if op == 'AND':
+        return pl_true(expr[1], model) and pl_true(expr[2], model)
+    elif op == 'OR':
+        return pl_true(expr[1], model) or pl_true(expr[2], model)
+    elif op == 'NOT':
+        return not pl_true(expr[1], model)
+    elif op == 'IMPLIES':
+        return (not pl_true(expr[1], model)) or pl_true(expr[2], model)
+    else:
+        raise ValueError(f"Unknown operator {op}")
+
+def kb_symbols(expr):
+    # Recursively collect all symbols in the expression
+    if isinstance(expr, str):
+        return {expr}
+    op = expr[0]
+    if op in ('AND', 'OR', 'IMPLIES'):
+        return kb_symbols(expr[1]) | kb_symbols(expr[2])
+    elif op == 'NOT':
+        return kb_symbols(expr[1])
+    else:
+        return set()
+
+# Example usage:
+
+# KB = (A OR C) AND (B OR NOT C)
+KB = ('AND',
+        ('OR', 'A', 'C'),
+        ('OR', 'B', ('NOT', 'C'))
+     )
+
+# Query α = A OR B
+alpha = ('OR', 'A', 'B')
+
+result = tt_entails(KB, alpha)
+print("Does KB entail alpha?", result)

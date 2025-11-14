@@ -1,0 +1,87 @@
+import re
+
+class ForwardChainingTree:
+    def __init__(self, KB, query):
+        self.rules = []
+        self.facts = []
+        self.query = query
+        self.children = {}
+
+        for s in KB:
+            if "=>" in s:
+                premises, conclusion = s.split("=>")
+                premises = [p.strip() for p in premises.split("^")]
+                conclusion = conclusion.strip()
+                self.rules.append((premises, conclusion))
+            else:
+                self.facts.append(s.strip())
+
+    def unify(self, pattern, fact):
+        pattern_match = re.match(r"(\w+)\((\w+)\)", pattern)
+        fact_match = re.match(r"(\w+)\((\w+)\)", fact)
+        if not pattern_match or not fact_match:
+            return None
+        if pattern_match.group(1) != fact_match.group(1):
+            return None
+        return {pattern_match.group(2): fact_match.group(2)}
+
+    def substitute(self, expr, subs):
+        if not subs:
+            return expr
+        for var, val in subs.items():
+            expr = expr.replace(var, val)
+        return expr
+
+    def infer(self):
+        print("=== Forward Chaining Reasoning Tree ===\n")
+        new_fact_found = True
+        all_facts = self.facts[:]
+
+        while new_fact_found:
+            new_fact_found = False
+            for premises, conclusion in self.rules:
+                for fact in all_facts:
+                    subs = self.unify(premises[0], fact)
+                    if subs is not None:
+                        grounded_premises = [self.substitute(p, subs) for p in premises]
+                        grounded_conclusion = self.substitute(conclusion, subs)
+                        if all(p in all_facts for p in grounded_premises) and grounded_conclusion not in all_facts:
+                            all_facts.append(grounded_conclusion)
+                            new_fact_found = True
+                            for p in grounded_premises:
+                                self.children.setdefault(p, []).append(grounded_conclusion)
+                            print(f"Inferred: {grounded_conclusion} (from {', '.join(grounded_premises)})")
+                            if grounded_conclusion == self.query:
+                                print("\n✅ Query Found!\n")
+                                self.print_tree()
+                                return True
+
+        print("\n❌ Query could not be inferred.")
+        self.print_tree()
+        return False
+
+    def print_tree(self):
+        print("=== Inference Tree (Facts at Root) ===")
+        visited = set()
+        def dfs(fact, level=0):
+            print("   " * level + f"└── {fact}")
+            visited.add(fact)
+            if fact in self.children:
+                for child in self.children[fact]:
+                    if child not in visited:
+                        dfs(child, level + 1)
+        for fact in self.facts:
+            dfs(fact)
+
+
+if __name__ == "__main__":
+    print("Program started...\n")
+
+    KB = [
+        "Human(Socrates)",
+        "Human(x) => Mortal(x)"
+    ]
+    query = "Mortal(Socrates)"
+
+    fc = ForwardChainingTree(KB, query)
+    fc.infer()
